@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"bufio"
 	"fmt"
 	"unicode"
 	"unicode/utf8"
@@ -32,7 +31,6 @@ type Token struct {
 
 // Lexer represents the state of the lexer
 type Lexer struct {
-	sc     *bufio.Scanner
 	input  string
 	start  int
 	pos    int
