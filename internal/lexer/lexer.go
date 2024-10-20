@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"bufio"
 	"fmt"
 	"unicode"
 	"unicode/utf8"
@@ -32,7 +31,6 @@ type Token struct {
 
 // Lexer represents the state of the lexer
 type Lexer struct {
-	sc     *bufio.Scanner
 	input  string
 	start  int
 	pos    int
@@ -148,10 +146,10 @@ func lexText(l *Lexer) stateFn {
 		case unicode.IsSpace(r):
 			l.start = l.pos // Skip whitespace
 			continue
-		case unicode.IsLetter(r) || r == '_':
+		case unicode.IsLetter(r) || r == '_' || r == '#': // Allow '#' and '_' as part of identifiers
 			l.backup()
 			return lexIdentifierOrKeyword
-		case symbols[r] != "": // symbols[r] returns a tokentype
+		case symbols[r] != "": // symbols[r] returns the token type for the rune
 			l.emit(symbols[r])
 		default:
 			// Emit an ERROR token with more context
@@ -176,13 +174,13 @@ func isKeyword(word string) bool {
 	return found
 }
 
-func isLetterOrDigit(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '_'
+func isAllowedCharacter(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '_' || r == '#'
 }
 
 // lexIdentifierOrKeyword scans identifiers (variable names and function names) and checks for keywords
 func lexIdentifierOrKeyword(l *Lexer) stateFn {
-	for r := l.next(); isLetterOrDigit(r); r = l.next() {
+	for r := l.next(); isAllowedCharacter(r); r = l.next() {
 		// Continue scanning if the character is a letter or digit
 	}
 	l.backup() // We've scanned one character too far; back up

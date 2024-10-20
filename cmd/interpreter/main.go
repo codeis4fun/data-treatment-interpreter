@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Sample JSON data
-	jsonData := []byte(`{"name": "vanessa", "surname": "teixeira", "height": 1.72, "weight": 60, "location": "São Paulo/sp", "languages": ["Portuguese", "English"]}`)
+	jsonData := []byte(`{"name":"vanessa","surname":"teixeira","height":1.72,"weight":60,"location":"São Paulo/sp","languages":["Portuguese","English"],"friends":[{"first":"Dale","last":"Murphy","age":44,"nets":["ig","fb","tw"]},{"first":"Roger","last":"Craig","age":68,"nets":["fb","tw"]},{"first":"Jane","last":"Murphy","age":47,"nets":["ig","tw"]}]}`)
 
 	input := `SET fullName = concatenate(' ',name, surname)
 SET fullName = uppercase(fullName)
@@ -19,7 +19,8 @@ SET description = concatenate(' BMI is ', fullName,  bmi)
 SET _city, _state = split(location, '/')
 SET address.city = uppercase(_city)
 SET address.state = uppercase(_state)
-SET languages.0 = uppercase(languages.0)`
+SET languages.# = uppercase(languages.#)
+SET friends.#.first = uppercase(friends.first)`
 	// Initialize lexer and parser
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(l, input)
