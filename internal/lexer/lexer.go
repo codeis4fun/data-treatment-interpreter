@@ -58,7 +58,7 @@ func NewLexer(input string) *Lexer {
 		input:  input,
 		tokens: make(chan Token),
 	}
-	go l.Run() // Start the lexer in a goroutine
+	go l.run() // Start the lexer in a goroutine
 	return l
 }
 
@@ -78,7 +78,7 @@ func (l *Lexer) emit(t TokenType) {
 }
 
 // run runs the state machine for lexing
-func (l *Lexer) Run() {
+func (l *Lexer) run() {
 	for state := lexText; state != nil; {
 		state = state(l)
 	}
