@@ -66,3 +66,27 @@ func TestUnexpectedToken(t *testing.T) {
 		}
 	}
 }
+
+func TestLexerWithIterations(t *testing.T) {
+	input := `SET languages.# = uppercase(languages.#)`
+
+	l := lexer.NewLexer(input)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "languages.#", Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Pos: 16},
+		{Type: lexer.IDENTIFIER, Literal: "uppercase", Pos: 18},
+		{Type: lexer.LPAREN, Literal: "(", Pos: 27},
+		{Type: lexer.IDENTIFIER, Literal: "languages.#", Pos: 28},
+		{Type: lexer.RPAREN, Literal: ")", Pos: 39},
+		{Type: lexer.EOF, Literal: "", Pos: 40},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
