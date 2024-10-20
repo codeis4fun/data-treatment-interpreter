@@ -125,11 +125,11 @@ func (p *Parser) parseAssignment() (*Program, error) {
 	}, nil
 }
 
-// parseVariables parses the list of variables being assigned
+// parseVariables parses the list of variables being assigned, including placeholders
 func (p *Parser) parseVariables() ([]string, error) {
 	var variables []string
 
-	// Expect at least one identifier (variable name)
+	// Expect at least one identifier (variable name, which may include '#')
 	firstVar := p.nextToken()
 	if firstVar.Type != lexer.IDENTIFIER {
 		return nil, p.errorWithContext(firstVar, "expected variable name")

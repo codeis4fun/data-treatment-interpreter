@@ -61,3 +61,31 @@ func TestParserWithSyntaxError(t *testing.T) {
 		t.Errorf("Expected error message to be '%s', got '%s'", expectedError, err.Error())
 	}
 }
+
+func TestParserWithIterations(t *testing.T) {
+	input := "SET friends.#.first = uppercase(friends.#.first)"
+	l := lexer.NewLexer(input)
+	p := parser.NewParser(l, input)
+
+	programs, err := p.RunAll()
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+
+	if len(programs) != 1 {
+		t.Fatalf("Expected 1 program, got %d", len(programs))
+	}
+
+	program := programs[0]
+
+	expectedProgram := &parser.Program{
+		Variables:   []string{"friends.#.first"},
+		Transformer: "uppercase",
+		Args:        []string{"friends.#.first"},
+	}
+
+	if !reflect.DeepEqual(program, expectedProgram) {
+		t.Errorf("Expected program to be %v, got %v", expectedProgram, program)
+	}
+
+}
