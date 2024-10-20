@@ -102,17 +102,6 @@ func (l *Lexer) backup() {
 	l.pos -= l.width
 }
 
-// nextRune returns the next rune and a boolean indicating if it's valid
-func nextRune(l *Lexer) (rune, bool) {
-	if l.pos >= len(l.input) {
-		return -1, false
-	}
-	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
-	l.width = w
-	l.pos += l.width
-	return r, true
-}
-
 // lexString scans string literals (enclosed in single quotes)
 func lexString(l *Lexer) stateFn {
 	for {
@@ -131,11 +120,7 @@ func lexString(l *Lexer) stateFn {
 // lexText is the main lexing state function for parsing identifiers and operators
 func lexText(l *Lexer) stateFn {
 	for {
-		r, ok := nextRune(l)
-		if !ok {
-			l.emit(EOF)
-			return nil
-		}
+		r := l.next()
 
 		switch {
 		case r == '\n':
@@ -151,6 +136,8 @@ func lexText(l *Lexer) stateFn {
 			return lexIdentifierOrKeyword
 		case symbols[r] != "": // symbols[r] returns the token type for the rune
 			l.emit(symbols[r])
+		case r == -1:
+			l.emit(EOF)
 		default:
 			// Emit an ERROR token with more context
 			l.emitError(fmt.Sprintf("unexpected character '%c'", r))
