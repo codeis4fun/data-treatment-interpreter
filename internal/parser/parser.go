@@ -108,8 +108,9 @@ func (p *Parser) parseAssignment() (*Program, error) {
 		return nil, err
 	}
 	// Expect '='
-	if err := p.expectOperator("="); err != nil {
-		return nil, err
+	token := p.nextToken()
+	if token.Type != lexer.OPERATOR || token.Literal != "=" {
+		return nil, p.errorWithContext(token, fmt.Sprintf("expected operator '%s'", "="))
 	}
 
 	// Parse transformer and arguments
@@ -199,15 +200,6 @@ parseLoop:
 	}
 
 	return transformer.Literal, args, nil
-}
-
-// expectOperator checks if the next token is the expected operator
-func (p *Parser) expectOperator(expected string) error {
-	token := p.nextToken()
-	if token.Type != lexer.OPERATOR || token.Literal != expected {
-		return p.errorWithContext(token, fmt.Sprintf("expected operator '%s'", expected))
-	}
-	return nil
 }
 
 // expectSymbol checks if the next token is the expected symbol type
