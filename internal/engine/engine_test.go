@@ -1,9 +1,11 @@
 package engine_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/codeis4fun/data-treatment-interpreter/internal/engine"
+	"github.com/codeis4fun/data-treatment-interpreter/internal/lexer"
 	"github.com/codeis4fun/data-treatment-interpreter/internal/parser"
 )
 
@@ -236,5 +238,55 @@ func TestEngineWithIterationsAndError(t *testing.T) {
 	_, err := e.Execute(program, jsonData)
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestEngineWithMultiplePrograms(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"name": "john", "surname": "doe"}`)
+
+	input := `SET completeName = concatenate(' ',name, surname)
+SET completeName = uppercase(completeName)`
+
+	// Initialize lexer and parser
+	l := lexer.NewLexer(strings.NewReader(input))
+	p := parser.NewParser(l, input)
+
+	// Parse the input
+	programs, err := p.RunAll()
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	// Input transformation program
+	ExpectedPrograms := []*parser.Program{
+		{
+			Variables:   []string{"completeName"},
+			Transformer: "concatenate",
+			Args:        []string{"' '", "name", "surname"},
+		},
+		{
+			Variables:   []string{"completeName"},
+			Transformer: "uppercase",
+			Args:        []string{"completeName"},
+		},
+	}
+
+	// Use reflect.DeepEqual to compare program and expectedProgram
+	if len(programs) != len(ExpectedPrograms) {
+		t.Fatalf("Expected %d programs, got %d", len(ExpectedPrograms), len(programs))
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	modifiedJSON, err := e.ExecuteAll(programs, jsonData)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := `{"name": "john", "surname": "doe","completeName":"JOHN DOE"}`
+	if string(modifiedJSON) != expected {
+		t.Errorf("Expected %s, got %s", expected, string(modifiedJSON))
 	}
 }

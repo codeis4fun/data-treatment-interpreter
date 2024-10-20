@@ -1,7 +1,9 @@
 package lexer
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"unicode"
 	"unicode/utf8"
 )
@@ -18,8 +20,8 @@ const (
 	COMMA      TokenType = "COMMA"
 	KEYWORD    TokenType = "KEYWORD"
 	ERROR      TokenType = "ERROR"
-	NEWLINE    TokenType = "NEWLINE"
-	EOF        TokenType = "EOF"
+	EOL        TokenType = "EOL" // End of line token
+	EOF        TokenType = "EOF" // End of file token
 )
 
 // Token represents a token with a type and literal value
@@ -31,6 +33,7 @@ type Token struct {
 
 // Lexer represents the state of the lexer
 type Lexer struct {
+	sc     *bufio.Scanner
 	input  string
 	start  int
 	pos    int
@@ -53,9 +56,9 @@ var symbols = map[rune]TokenType{
 }
 
 // NewLexer initializes a new lexer
-func NewLexer(input string) *Lexer {
+func NewLexer(r io.Reader) *Lexer {
 	l := &Lexer{
-		input:  input,
+		sc:     bufio.NewScanner(r),
 		tokens: make(chan Token),
 	}
 	go l.run() // Start the lexer in a goroutine
@@ -79,10 +82,25 @@ func (l *Lexer) emit(t TokenType) {
 
 // run runs the state machine for lexing
 func (l *Lexer) run() {
-	for state := lexText; state != nil; {
-		state = state(l)
+	for l.sc.Scan() {
+		// Set the current line as input
+		l.input = l.sc.Text() + "\n"
+		l.pos = 0
+		l.start = 0
+
+		// Process the line by running the state machine
+		for state := lexText; state != nil; {
+			state = state(l)
+		}
 	}
+
+	// Send EOF token when the input is completely done
+	l.emit(EOF)
 	close(l.tokens)
+
+	if err := l.sc.Err(); err != nil {
+		l.emitError(fmt.Sprintf("error reading input: %v", err))
+	}
 }
 
 // next returns the next rune in the input and advances the position
@@ -124,8 +142,8 @@ func lexText(l *Lexer) stateFn {
 
 		switch {
 		case r == '\n':
-			l.emit(NEWLINE) // Emit NEWLINE token for line breaks
-			continue
+			l.emit(EOL) // Emit EOL token for line breaks
+			return nil
 		case r == '\'':
 			return lexString // Handle string literals
 		case unicode.IsSpace(r):
@@ -141,7 +159,6 @@ func lexText(l *Lexer) stateFn {
 		default:
 			// Emit an ERROR token with more context
 			l.emitError(fmt.Sprintf("unexpected character '%c'", r))
-
 		}
 	}
 }

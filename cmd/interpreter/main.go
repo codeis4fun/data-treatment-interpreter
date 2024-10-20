@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/codeis4fun/data-treatment-interpreter/internal/engine"
 	"github.com/codeis4fun/data-treatment-interpreter/internal/lexer"
@@ -21,8 +22,9 @@ SET address.city = uppercase(_city)
 SET address.state = uppercase(_state)
 SET languages.# = uppercase(languages.#)
 SET friends.#.first = uppercase(friends.first)`
+	r := strings.NewReader(input)
 	// Initialize lexer and parser
-	l := lexer.NewLexer(input)
+	l := lexer.NewLexer(r)
 	p := parser.NewParser(l, input)
 
 	// Parse the input

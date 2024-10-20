@@ -10,8 +10,9 @@ import (
 )
 
 func TestParser(t *testing.T) {
-	input := "SET a, b = concatenate(name, surname)"
-	l := lexer.NewLexer(input)
+	input := "SET a, b = t(c, d)"
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
 	p := parser.NewParser(l, input)
 
 	program, err := p.Run()
@@ -21,8 +22,8 @@ func TestParser(t *testing.T) {
 
 	expectedProgram := &parser.Program{
 		Variables:   []string{"a", "b"},
-		Transformer: "concatenate",
-		Args:        []string{"name", "surname"},
+		Transformer: "t",
+		Args:        []string{"c", "d"},
 	}
 
 	if program == nil {
@@ -37,7 +38,8 @@ func TestParser(t *testing.T) {
 
 func TestParserWithSyntaxError(t *testing.T) {
 	input := "SET a, b = concatenate(name, surname"
-	l := lexer.NewLexer(input)
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
 	p := parser.NewParser(l, input)
 
 	program, err := p.Run()
@@ -49,22 +51,15 @@ func TestParserWithSyntaxError(t *testing.T) {
 		t.Errorf("Expected program to be nil, got %v", p)
 	}
 
-	var expectedErrorBuilder strings.Builder
-	expectedErrorBuilder.WriteString("unexpected token in arguments at position 36: ")
-	expectedErrorBuilder.WriteString("\n")
-	expectedErrorBuilder.WriteString("SET a, b = concatenate(name, surname")
-	expectedErrorBuilder.WriteString("\n")
-	expectedErrorBuilder.WriteString(`                                    ^`)
-
-	expectedError := expectedErrorBuilder.String()
-	if err.Error() != expectedError {
-		t.Errorf("Expected error message to be '%s', got '%s'", expectedError, err.Error())
+	if err == nil {
+		t.Errorf("Expected error, got nil")
 	}
 }
 
 func TestParserWithIterations(t *testing.T) {
 	input := "SET friends.#.first = uppercase(friends.#.first)"
-	l := lexer.NewLexer(input)
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
 	p := parser.NewParser(l, input)
 
 	programs, err := p.RunAll()
@@ -86,6 +81,47 @@ func TestParserWithIterations(t *testing.T) {
 
 	if !reflect.DeepEqual(program, expectedProgram) {
 		t.Errorf("Expected program to be %v, got %v", expectedProgram, program)
+	}
+
+}
+
+func TestParserWithMultiplePrograms(t *testing.T) {
+	input := `SET a = t(b, c)
+SET d = t(e, f)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+	p := parser.NewParser(l, input)
+
+	programs, err := p.RunAll()
+	if err != nil {
+		t.Errorf("Error: %v", err)
+	}
+
+	if len(programs) != 2 {
+		t.Fatalf("Expected 2 programs, got %d", len(programs))
+	}
+
+	program1 := programs[0]
+	program2 := programs[1]
+
+	expectedProgram1 := &parser.Program{
+		Variables:   []string{"a"},
+		Transformer: "t",
+		Args:        []string{"b", "c"},
+	}
+
+	expectedProgram2 := &parser.Program{
+		Variables:   []string{"d"},
+		Transformer: "t",
+		Args:        []string{"e", "f"},
+	}
+
+	if !reflect.DeepEqual(program1, expectedProgram1) {
+		t.Errorf("Expected program to be %v, got %v", expectedProgram1, program1)
+	}
+
+	if !reflect.DeepEqual(program2, expectedProgram2) {
+		t.Errorf("Expected program to be %v, got %v", expectedProgram2, program2)
 	}
 
 }

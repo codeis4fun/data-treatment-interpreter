@@ -61,9 +61,8 @@ func (p *Parser) RunAll() ([]*Program, error) {
 	var programs []*Program
 
 	// Process multiple commands
-	// label to break out of the loop when EOF is reached
-parseLoop:
 	for {
+		// Parse each program (command) individually
 		program, err := p.parseProgram()
 		if err != nil {
 			return nil, err
@@ -73,19 +72,26 @@ parseLoop:
 			programs = append(programs, program)
 		}
 
-		// Expect a NEWLINE or EOF to indicate the end of a command
+		// Expect either EOL (end of line) or EOF (end of file)
 		token := p.peekToken()
+
 		switch token.Type {
-		case lexer.NEWLINE:
-			p.nextToken() // Consume the newline
+		case lexer.EOL:
+			// Consume the EOL token and continue to check for the next token
+			p.nextToken()
+
+			// Peek again to see if the next token is EOF, meaning we've finished
+			if p.peekToken().Type == lexer.EOF {
+				return programs, nil
+			}
 		case lexer.EOF:
-			break parseLoop // Stop if the end of the file is reached
+			// End the parsing process, return all parsed programs
+			return programs, nil
 		default:
-			return nil, p.errorWithContext(token, "expected newline or end of file")
+			// If we encounter any other unexpected token, return an error
+			return nil, p.errorWithContext(token, "expected end of line or end of file")
 		}
 	}
-
-	return programs, nil
 }
 
 // parseProgram parses the input and returns a Program struct
