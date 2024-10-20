@@ -191,3 +191,50 @@ func TestEngineExecuteAllWithErrors(t *testing.T) {
 		t.Fatalf("Expected error, got nil")
 	}
 }
+
+func TestEngineWithIterations(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"friends":[{"first":"Dale","last":"Murphy"},{"first":"Roger","last":"Craig"},{"first":"Jane","last":"Murphy"}]}`)
+
+	// Input transformation: SET friends.#.first = uppercase(friends.#.first)
+	program := &parser.Program{
+		Variables:   []string{"friends.#.first"},
+		Transformer: "uppercase",
+		Args:        []string{"friends.#.first"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	modifiedJSON, err := e.Execute(program, jsonData)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := `{"friends":[{"first":"DALE","last":"Murphy"},{"first":"ROGER","last":"Craig"},{"first":"JANE","last":"Murphy"}]}`
+	if string(modifiedJSON) != expected {
+		t.Errorf("Expected %s, got %s", expected, string(modifiedJSON))
+	}
+}
+
+func TestEngineWithIterationsAndError(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"friends":[{"first":"Dale","last":"Murphy"},{"first":"Roger","last":"Craig"},{"first":"Jane","last":"Murphy"}]}`)
+
+	// Input transformation: SET friends.#.first = uppercase(friends.first)
+	program := &parser.Program{
+		Variables:   []string{"friends.first"},
+		Transformer: "uppercase",
+		Args:        []string{"friends.first"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	_, err := e.Execute(program, jsonData)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
