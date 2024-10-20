@@ -125,14 +125,21 @@ func (p *Parser) parseAssignment() (*Program, error) {
 	}, nil
 }
 
+func (p *Parser) isIdentifier(token lexer.Token) error {
+	if token.Type == lexer.IDENTIFIER {
+		return nil
+	}
+	return p.errorWithContext(token, "expected variable name")
+}
+
 // parseVariables parses the list of variables being assigned, including placeholders
 func (p *Parser) parseVariables() ([]string, error) {
 	var variables []string
 
 	// Expect at least one identifier (variable name, which may include '#')
 	firstVar := p.nextToken()
-	if firstVar.Type != lexer.IDENTIFIER {
-		return nil, p.errorWithContext(firstVar, "expected variable name")
+	if err := p.isIdentifier(firstVar); err != nil {
+		return nil, err
 	}
 	variables = append(variables, firstVar.Literal)
 
@@ -146,8 +153,8 @@ parseLoop:
 		case nextToken.Type == lexer.COMMA:
 			p.nextToken() // Consume the comma
 			nextVar := p.nextToken()
-			if nextVar.Type != lexer.IDENTIFIER {
-				return nil, p.errorWithContext(nextVar, "expected variable name")
+			if err := p.isIdentifier(nextVar); err != nil {
+				return nil, err
 			}
 			variables = append(variables, nextVar.Literal)
 
