@@ -63,7 +63,7 @@ func (p *Parser) RunAll() ([]*Program, error) {
 	// Process multiple commands
 	for {
 		// Parse each program (command) individually
-		program, err := p.parseProgram()
+		program, err := p.Run()
 		if err != nil {
 			return nil, err
 		}
@@ -72,11 +72,10 @@ func (p *Parser) RunAll() ([]*Program, error) {
 			programs = append(programs, program)
 		}
 
-		// Expect either EOL (end of line) or EOF (end of file)
+		// Check for EOL token to see if there are more commands
 		token := p.peekToken()
 
-		switch token.Type {
-		case lexer.EOL:
+		if token.Type == lexer.EOL {
 			// Consume the EOL token and continue to check for the next token
 			p.nextToken()
 
@@ -84,12 +83,6 @@ func (p *Parser) RunAll() ([]*Program, error) {
 			if p.peekToken().Type == lexer.EOF {
 				return programs, nil
 			}
-		case lexer.EOF:
-			// End the parsing process, return all parsed programs
-			return programs, nil
-		default:
-			// If we encounter any other unexpected token, return an error
-			return nil, p.errorWithContext(token, "expected end of line or end of file")
 		}
 	}
 }
