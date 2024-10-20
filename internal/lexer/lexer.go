@@ -143,7 +143,7 @@ func lexText(l *Lexer) stateFn {
 		switch {
 		case r == '\n':
 			l.emit(EOL) // Emit EOL token for line breaks
-			return nil
+			return nil  // Stop lexing the current line and wait for the next line
 		case r == '\'':
 			return lexString // Handle string literals
 		case unicode.IsSpace(r):
