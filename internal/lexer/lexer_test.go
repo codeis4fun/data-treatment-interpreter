@@ -42,13 +42,8 @@ func TestUnexpectedToken(t *testing.T) {
 		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
 		{Type: lexer.IDENTIFIER, Literal: "name", Line: 1, Pos: 4},
 		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 9},
-		{Type: lexer.ERROR, Literal: "unexpected character '@'", Line: 1, Pos: 11}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '1'", Line: 1, Pos: 12}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '2'", Line: 1, Pos: 13}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '3'", Line: 1, Pos: 14},
-		{Type: lexer.IDENTIFIER, Literal: "invalid", Line: 1, Pos: 15},
-		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 22},
-		{Type: lexer.EOF, Literal: "", Line: 2, Pos: 23},
+		{Type: lexer.ERROR, Literal: "unexpected character '@'", Line: 1, Pos: 11},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 12},
 	}
 
 	r := strings.NewReader(input)
@@ -124,6 +119,78 @@ SET d = t(e, f)`
 		{Type: lexer.RPAREN, Literal: ")", Line: 2, Pos: 14},
 		{Type: lexer.EOL, Literal: "\n", Line: 2, Pos: 15},
 		{Type: lexer.EOF, Literal: "", Line: 3, Pos: 16},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithTransformerWithInvalidCharacter(t *testing.T) {
+	input := `SET a = t@(b, c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.ERROR, Literal: "unexpected character '@'", Line: 1, Pos: 9},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 10},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithArgumentInTransformerAsString(t *testing.T) {
+	input := `SET a = t('b', c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 9},
+		{Type: lexer.STRING, Literal: "'b'", Line: 1, Pos: 10},
+		{Type: lexer.COMMA, Literal: ",", Line: 1, Pos: 13},
+		{Type: lexer.IDENTIFIER, Literal: "c", Line: 1, Pos: 15},
+		{Type: lexer.RPAREN, Literal: ")", Line: 1, Pos: 16},
+		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 17},
+		{Type: lexer.EOF, Literal: "", Line: 2, Pos: 18},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithArgumentInTransformerButUnfinishedString(t *testing.T) {
+	input := `SET a = t('b, c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 9},
+		{Type: lexer.ERROR, Literal: "'b, c)\n", Line: 1, Pos: 10},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 17},
 	}
 
 	for _, expectedToken := range expectedTokens {

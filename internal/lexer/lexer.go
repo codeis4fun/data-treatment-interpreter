@@ -168,6 +168,7 @@ func lexText(l *Lexer) stateFn {
 		default:
 			// Emit an ERROR token with more context
 			l.emitError(fmt.Sprintf("unexpected character '%c'", r))
+			return nil
 		}
 	}
 }
@@ -178,6 +179,7 @@ func (l *Lexer) emitError(message string) {
 		Type:    ERROR,
 		Literal: message,
 		Pos:     l.start, // Track the position where the error occurred
+		Line:    l.line,  // Track the line number
 	}
 	l.start = l.pos
 }
