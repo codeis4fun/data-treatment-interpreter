@@ -1,7 +1,9 @@
 package lexer
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"unicode"
 	"unicode/utf8"
 )
@@ -18,24 +20,28 @@ const (
 	COMMA      TokenType = "COMMA"
 	KEYWORD    TokenType = "KEYWORD"
 	ERROR      TokenType = "ERROR"
-	NEWLINE    TokenType = "NEWLINE"
-	EOF        TokenType = "EOF"
+	EOL        TokenType = "EOL" // End of line token
+	EOF        TokenType = "EOF" // End of file token
 )
 
 // Token represents a token with a type and literal value
 type Token struct {
 	Type    TokenType
 	Literal string
+	Line    int // Line number where the token was found
 	Pos     int // Position in the input string
 }
 
 // Lexer represents the state of the lexer
 type Lexer struct {
-	input  string
-	start  int
-	pos    int
-	width  int
-	tokens chan Token
+	sc      *bufio.Scanner
+	input   string
+	start   int
+	pos     int
+	width   int
+	line    int
+	linePos int
+	tokens  chan Token
 }
 
 type stateFn func(*Lexer) stateFn
@@ -53,12 +59,13 @@ var symbols = map[rune]TokenType{
 }
 
 // NewLexer initializes a new lexer
-func NewLexer(input string) *Lexer {
+func NewLexer(r io.Reader) *Lexer {
 	l := &Lexer{
-		input:  input,
+		sc:     bufio.NewScanner(r),
+		line:   1, // Start on the first line
 		tokens: make(chan Token),
 	}
-	go l.Run() // Start the lexer in a goroutine
+	go l.run() // Start the lexer in a goroutine
 	return l
 }
 
@@ -73,16 +80,32 @@ func (l *Lexer) emit(t TokenType) {
 		Type:    t,
 		Literal: l.input[l.start:l.pos],
 		Pos:     l.start, // Save the position of the token
+		Line:    l.line,  // Track the line number
 	}
 	l.start = l.pos
 }
 
 // run runs the state machine for lexing
-func (l *Lexer) Run() {
-	for state := lexText; state != nil; {
-		state = state(l)
+func (l *Lexer) run() {
+	for l.sc.Scan() {
+		// Set the current line as input
+		l.input = l.sc.Text() + "\n"
+		l.pos = 0
+		l.start = 0
+
+		// Process the line by running the state machine
+		for state := lexText; state != nil; {
+			state = state(l)
+		}
 	}
+
+	// Send EOF token when the input is completely done
+	l.emit(EOF)
 	close(l.tokens)
+
+	if err := l.sc.Err(); err != nil {
+		l.emitError(fmt.Sprintf("error reading input: %v", err))
+	}
 }
 
 // next returns the next rune in the input and advances the position
@@ -94,23 +117,14 @@ func (l *Lexer) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = w
 	l.pos += l.width
+	l.linePos += l.width
 	return r
 }
 
 // backup steps back one rune
 func (l *Lexer) backup() {
 	l.pos -= l.width
-}
-
-// nextRune returns the next rune and a boolean indicating if it's valid
-func nextRune(l *Lexer) (rune, bool) {
-	if l.pos >= len(l.input) {
-		return -1, false
-	}
-	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
-	l.width = w
-	l.pos += l.width
-	return r, true
+	l.linePos -= l.width
 }
 
 // lexString scans string literals (enclosed in single quotes)
@@ -131,16 +145,14 @@ func lexString(l *Lexer) stateFn {
 // lexText is the main lexing state function for parsing identifiers and operators
 func lexText(l *Lexer) stateFn {
 	for {
-		r, ok := nextRune(l)
-		if !ok {
-			l.emit(EOF)
-			return nil
-		}
+		r := l.next()
 
 		switch {
 		case r == '\n':
-			l.emit(NEWLINE) // Emit NEWLINE token for line breaks
-			continue
+			l.emit(EOL)   // Emit EOL token for line breaks
+			l.line++      // Increment the line number
+			l.linePos = 0 // Reset the position within the new line
+			return nil    // Stop lexing the current line and wait for the next line
 		case r == '\'':
 			return lexString // Handle string literals
 		case unicode.IsSpace(r):
@@ -151,10 +163,12 @@ func lexText(l *Lexer) stateFn {
 			return lexIdentifierOrKeyword
 		case symbols[r] != "": // symbols[r] returns the token type for the rune
 			l.emit(symbols[r])
+		case r == -1:
+			l.emit(EOF)
 		default:
 			// Emit an ERROR token with more context
 			l.emitError(fmt.Sprintf("unexpected character '%c'", r))
-
+			return nil
 		}
 	}
 }
@@ -165,6 +179,7 @@ func (l *Lexer) emitError(message string) {
 		Type:    ERROR,
 		Literal: message,
 		Pos:     l.start, // Track the position where the error occurred
+		Line:    l.line,  // Track the line number
 	}
 	l.start = l.pos
 }

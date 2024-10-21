@@ -61,10 +61,9 @@ func (p *Parser) RunAll() ([]*Program, error) {
 	var programs []*Program
 
 	// Process multiple commands
-	// label to break out of the loop when EOF is reached
-parseLoop:
 	for {
-		program, err := p.parseProgram()
+		// Parse each program (command) individually
+		program, err := p.Run()
 		if err != nil {
 			return nil, err
 		}
@@ -73,19 +72,19 @@ parseLoop:
 			programs = append(programs, program)
 		}
 
-		// Expect a NEWLINE or EOF to indicate the end of a command
+		// Check for EOL token to see if there are more commands
 		token := p.peekToken()
-		switch token.Type {
-		case lexer.NEWLINE:
-			p.nextToken() // Consume the newline
-		case lexer.EOF:
-			break parseLoop // Stop if the end of the file is reached
-		default:
-			return nil, p.errorWithContext(token, "expected newline or end of file")
+
+		if token.Type == lexer.EOL {
+			// Consume the EOL token and continue to check for the next token
+			p.nextToken()
+
+			// Peek again to see if the next token is EOF, meaning we've finished
+			if p.peekToken().Type == lexer.EOF {
+				return programs, nil
+			}
 		}
 	}
-
-	return programs, nil
 }
 
 // parseProgram parses the input and returns a Program struct
@@ -108,8 +107,9 @@ func (p *Parser) parseAssignment() (*Program, error) {
 		return nil, err
 	}
 	// Expect '='
-	if err := p.expectOperator("="); err != nil {
-		return nil, err
+	token := p.nextToken()
+	if token.Type != lexer.OPERATOR || token.Literal != "=" {
+		return nil, p.errorWithContext(token, fmt.Sprintf("expected operator '%s'", "="))
 	}
 
 	// Parse transformer and arguments
@@ -125,14 +125,21 @@ func (p *Parser) parseAssignment() (*Program, error) {
 	}, nil
 }
 
+func (p *Parser) isIdentifier(token lexer.Token) error {
+	if token.Type == lexer.IDENTIFIER {
+		return nil
+	}
+	return p.errorWithContext(token, "expected variable name")
+}
+
 // parseVariables parses the list of variables being assigned, including placeholders
 func (p *Parser) parseVariables() ([]string, error) {
 	var variables []string
 
 	// Expect at least one identifier (variable name, which may include '#')
 	firstVar := p.nextToken()
-	if firstVar.Type != lexer.IDENTIFIER {
-		return nil, p.errorWithContext(firstVar, "expected variable name")
+	if err := p.isIdentifier(firstVar); err != nil {
+		return nil, err
 	}
 	variables = append(variables, firstVar.Literal)
 
@@ -146,8 +153,8 @@ parseLoop:
 		case nextToken.Type == lexer.COMMA:
 			p.nextToken() // Consume the comma
 			nextVar := p.nextToken()
-			if nextVar.Type != lexer.IDENTIFIER {
-				return nil, p.errorWithContext(nextVar, "expected variable name")
+			if err := p.isIdentifier(nextVar); err != nil {
+				return nil, err
 			}
 			variables = append(variables, nextVar.Literal)
 
@@ -159,12 +166,27 @@ parseLoop:
 	return variables, nil
 }
 
+// check if transformer name has only alphabets
+func (p *Parser) isTransformer(token lexer.Token) error {
+	for _, r := range token.Literal {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return p.errorWithContext(token, "transformer name should have only alphabets")
+		}
+	}
+	return nil
+}
+
 // parseTransformer parses the transformer function and its arguments
 func (p *Parser) parseTransformer() (string, []string, error) {
 	// Expect the transformer name (an identifier)
 	transformer := p.nextToken()
 	if transformer.Type != lexer.IDENTIFIER {
 		return "", nil, p.errorWithContext(transformer, "expected transformer name")
+	}
+
+	// Check if the transformer name has only alphabets
+	if err := p.isTransformer(transformer); err != nil {
+		return "", nil, p.errorWithContext(transformer, "expected transformer name to have only alphabets")
 	}
 
 	// Expect '(' to start argument list
@@ -201,15 +223,6 @@ parseLoop:
 	return transformer.Literal, args, nil
 }
 
-// expectOperator checks if the next token is the expected operator
-func (p *Parser) expectOperator(expected string) error {
-	token := p.nextToken()
-	if token.Type != lexer.OPERATOR || token.Literal != expected {
-		return p.errorWithContext(token, fmt.Sprintf("expected operator '%s'", expected))
-	}
-	return nil
-}
-
 // expectSymbol checks if the next token is the expected symbol type
 func (p *Parser) expectSymbol(expectedType lexer.TokenType) error {
 	token := p.nextToken()
@@ -220,13 +233,32 @@ func (p *Parser) expectSymbol(expectedType lexer.TokenType) error {
 }
 
 // errorWithContext provides an error message with context and highlights where the error occurred
+// errorWithContext provides an error message with context and highlights where the error occurred
 func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("%s at position %d: %s", message, tok.Pos, tok.Literal)) // Include position in error
+
+	// Split the input into lines to locate the exact line and position
+	lines := strings.Split(p.input, "\n")
+	if tok.Line > len(lines) {
+		return fmt.Errorf("invalid line number %d", tok.Line)
+	}
+
+	// Get the error line using the line number
+	// verify if lines has this index
+	errorLine := lines[tok.Line-1] // Line numbers are 1-based
+
+	// Error message with line and position
+	builder.WriteString(fmt.Sprintf("%s at line %d, position %d\n", message, tok.Line, tok.Pos))
+	builder.WriteString(errorLine)
 	builder.WriteString("\n")
-	builder.WriteString(p.input)
-	builder.WriteString("\n")
-	builder.WriteString(p.makePointer(tok.Pos))
+
+	// Create a pointer string (e.g., "   ^") to show where the error occurred in the line
+	pointer := make([]rune, tok.Pos)
+	for i := range pointer {
+		pointer[i] = ' ' // Create spaces to position the '^' character
+	}
+	builder.WriteString(string(pointer) + "^") // Add the '^' character to point to the error
+
 	return fmt.Errorf(builder.String())
 }
 

@@ -1,6 +1,7 @@
 package lexer_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/codeis4fun/data-treatment-interpreter/internal/lexer"
@@ -8,22 +9,23 @@ import (
 
 func TestLexer(t *testing.T) {
 	inputCmd := `SET bmi, isHealthy = bmi(weight, height)`
-
-	l := lexer.NewLexer(inputCmd)
+	r := strings.NewReader(inputCmd)
+	l := lexer.NewLexer(r)
 
 	expectedTokens := []lexer.Token{
-		{Type: lexer.KEYWORD, Literal: "SET", Pos: 0},
-		{Type: lexer.IDENTIFIER, Literal: "bmi", Pos: 4},
-		{Type: lexer.COMMA, Literal: ",", Pos: 7},
-		{Type: lexer.IDENTIFIER, Literal: "isHealthy", Pos: 9},
-		{Type: lexer.OPERATOR, Literal: "=", Pos: 19},
-		{Type: lexer.IDENTIFIER, Literal: "bmi", Pos: 21},
-		{Type: lexer.LPAREN, Literal: "(", Pos: 24},
-		{Type: lexer.IDENTIFIER, Literal: "weight", Pos: 25},
-		{Type: lexer.COMMA, Literal: ",", Pos: 31},
-		{Type: lexer.IDENTIFIER, Literal: "height", Pos: 33},
-		{Type: lexer.RPAREN, Literal: ")", Pos: 39},
-		{Type: lexer.EOF, Literal: "", Pos: 40},
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "bmi", Line: 1, Pos: 4},
+		{Type: lexer.COMMA, Literal: ",", Line: 1, Pos: 7},
+		{Type: lexer.IDENTIFIER, Literal: "isHealthy", Line: 1, Pos: 9},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 19},
+		{Type: lexer.IDENTIFIER, Literal: "bmi", Line: 1, Pos: 21},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 24},
+		{Type: lexer.IDENTIFIER, Literal: "weight", Line: 1, Pos: 25},
+		{Type: lexer.COMMA, Literal: ",", Line: 1, Pos: 31},
+		{Type: lexer.IDENTIFIER, Literal: "height", Line: 1, Pos: 33},
+		{Type: lexer.RPAREN, Literal: ")", Line: 1, Pos: 39},
+		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 40},
+		{Type: lexer.EOF, Literal: "", Line: 2, Pos: 41},
 	}
 
 	for _, expectedToken := range expectedTokens {
@@ -37,18 +39,15 @@ func TestLexer(t *testing.T) {
 func TestUnexpectedToken(t *testing.T) {
 	input := "SET name = @123invalid"
 	expectedTokens := []lexer.Token{
-		{Type: lexer.KEYWORD, Literal: "SET", Pos: 0},
-		{Type: lexer.IDENTIFIER, Literal: "name", Pos: 4},
-		{Type: lexer.OPERATOR, Literal: "=", Pos: 9},
-		{Type: lexer.ERROR, Literal: "unexpected character '@'", Pos: 11}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '1'", Pos: 12}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '2'", Pos: 13}, // Invalid token should trigger an ERROR token
-		{Type: lexer.ERROR, Literal: "unexpected character '3'", Pos: 14},
-		{Type: lexer.IDENTIFIER, Literal: "invalid", Pos: 15},
-		{Type: lexer.EOF, Literal: "", Pos: 22},
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "name", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 9},
+		{Type: lexer.ERROR, Literal: "unexpected character '@'", Line: 1, Pos: 11},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 12},
 	}
 
-	l := lexer.NewLexer(input)
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
 
 	for _, expected := range expectedTokens {
 		token := l.NextToken()
@@ -69,18 +68,129 @@ func TestUnexpectedToken(t *testing.T) {
 
 func TestLexerWithIterations(t *testing.T) {
 	input := `SET languages.# = uppercase(languages.#)`
-
-	l := lexer.NewLexer(input)
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
 
 	expectedTokens := []lexer.Token{
-		{Type: lexer.KEYWORD, Literal: "SET", Pos: 0},
-		{Type: lexer.IDENTIFIER, Literal: "languages.#", Pos: 4},
-		{Type: lexer.OPERATOR, Literal: "=", Pos: 16},
-		{Type: lexer.IDENTIFIER, Literal: "uppercase", Pos: 18},
-		{Type: lexer.LPAREN, Literal: "(", Pos: 27},
-		{Type: lexer.IDENTIFIER, Literal: "languages.#", Pos: 28},
-		{Type: lexer.RPAREN, Literal: ")", Pos: 39},
-		{Type: lexer.EOF, Literal: "", Pos: 40},
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "languages.#", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 16},
+		{Type: lexer.IDENTIFIER, Literal: "uppercase", Line: 1, Pos: 18},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 27},
+		{Type: lexer.IDENTIFIER, Literal: "languages.#", Line: 1, Pos: 28},
+		{Type: lexer.RPAREN, Literal: ")", Line: 1, Pos: 39},
+		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 40},
+		{Type: lexer.EOF, Literal: "", Line: 2, Pos: 41},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithTwoPrograms(t *testing.T) {
+	input := `SET a = t(b, c)
+SET d = t(e, f)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 9},
+		{Type: lexer.IDENTIFIER, Literal: "b", Line: 1, Pos: 10},
+		{Type: lexer.COMMA, Literal: ",", Line: 1, Pos: 11},
+		{Type: lexer.IDENTIFIER, Literal: "c", Line: 1, Pos: 13},
+		{Type: lexer.RPAREN, Literal: ")", Line: 1, Pos: 14},
+		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 15},
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 2, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "d", Line: 2, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 2, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 2, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 2, Pos: 9},
+		{Type: lexer.IDENTIFIER, Literal: "e", Line: 2, Pos: 10},
+		{Type: lexer.COMMA, Literal: ",", Line: 2, Pos: 11},
+		{Type: lexer.IDENTIFIER, Literal: "f", Line: 2, Pos: 13},
+		{Type: lexer.RPAREN, Literal: ")", Line: 2, Pos: 14},
+		{Type: lexer.EOL, Literal: "\n", Line: 2, Pos: 15},
+		{Type: lexer.EOF, Literal: "", Line: 3, Pos: 16},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithTransformerWithInvalidCharacter(t *testing.T) {
+	input := `SET a = t@(b, c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.ERROR, Literal: "unexpected character '@'", Line: 1, Pos: 9},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 10},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithArgumentInTransformerAsString(t *testing.T) {
+	input := `SET a = t('b', c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 9},
+		{Type: lexer.STRING, Literal: "'b'", Line: 1, Pos: 10},
+		{Type: lexer.COMMA, Literal: ",", Line: 1, Pos: 13},
+		{Type: lexer.IDENTIFIER, Literal: "c", Line: 1, Pos: 15},
+		{Type: lexer.RPAREN, Literal: ")", Line: 1, Pos: 16},
+		{Type: lexer.EOL, Literal: "\n", Line: 1, Pos: 17},
+		{Type: lexer.EOF, Literal: "", Line: 2, Pos: 18},
+	}
+
+	for _, expectedToken := range expectedTokens {
+		actualToken := l.NextToken()
+		if actualToken != expectedToken {
+			t.Errorf("Expected token %v, got %v", expectedToken, actualToken)
+		}
+	}
+}
+
+func TestLexerWithArgumentInTransformerButUnfinishedString(t *testing.T) {
+	input := `SET a = t('b, c)`
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+
+	expectedTokens := []lexer.Token{
+		{Type: lexer.KEYWORD, Literal: "SET", Line: 1, Pos: 0},
+		{Type: lexer.IDENTIFIER, Literal: "a", Line: 1, Pos: 4},
+		{Type: lexer.OPERATOR, Literal: "=", Line: 1, Pos: 6},
+		{Type: lexer.IDENTIFIER, Literal: "t", Line: 1, Pos: 8},
+		{Type: lexer.LPAREN, Literal: "(", Line: 1, Pos: 9},
+		{Type: lexer.ERROR, Literal: "'b, c)\n", Line: 1, Pos: 10},
+		{Type: lexer.EOF, Literal: "", Line: 1, Pos: 17},
 	}
 
 	for _, expectedToken := range expectedTokens {
