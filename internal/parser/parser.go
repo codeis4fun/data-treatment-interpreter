@@ -233,7 +233,6 @@ func (p *Parser) expectSymbol(expectedType lexer.TokenType) error {
 }
 
 // errorWithContext provides an error message with context and highlights where the error occurred
-// errorWithContext provides an error message with context and highlights where the error occurred
 func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 	var builder strings.Builder
 
@@ -244,7 +243,6 @@ func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 	}
 
 	// Get the error line using the line number
-	// verify if lines has this index
 	errorLine := lines[tok.Line-1] // Line numbers are 1-based
 
 	// Error message with line and position
@@ -252,12 +250,8 @@ func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 	builder.WriteString(errorLine)
 	builder.WriteString("\n")
 
-	// Create a pointer string (e.g., "   ^") to show where the error occurred in the line
-	pointer := make([]rune, tok.Pos)
-	for i := range pointer {
-		pointer[i] = ' ' // Create spaces to position the '^' character
-	}
-	builder.WriteString(string(pointer) + "^") // Add the '^' character to point to the error
+	pointer := p.makePointer(tok.Pos)
+	builder.WriteString(pointer)
 
 	return fmt.Errorf(builder.String())
 }
@@ -266,7 +260,7 @@ func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 func (p *Parser) makePointer(pos int) string {
 	pointer := make([]rune, pos)
 	for i := range pointer {
-		pointer[i] = ' '
+		pointer[i] = ' ' // Create spaces to position the '^' character
 	}
-	return string(pointer) + "^"
+	return string(pointer) + "^" // Add the '^' character to point to the error
 }
