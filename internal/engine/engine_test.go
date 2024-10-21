@@ -1,7 +1,6 @@
 package engine_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -405,8 +404,6 @@ func TestEngineWithIterationsButInexistentTransformer(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
 	}
-
-	fmt.Println(string(modifiedJSON))
 
 	expected := `{"friends":[{"first":"Dale","last":"Murphy"},{"first":"Roger","last":"Craig"},{"first":"Jane","last":"Murphy"}]}`
 	if string(modifiedJSON) != expected {
