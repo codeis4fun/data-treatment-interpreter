@@ -166,12 +166,28 @@ parseLoop:
 	return variables, nil
 }
 
+// check if transformer name has only alphabets
+func (p *Parser) isTransformer(token lexer.Token) error {
+	for _, r := range token.Literal {
+		if r < 'a' || r > 'z' {
+			return p.errorWithContext(token, "expected transformer name")
+		}
+	}
+	return nil
+}
+
 // parseTransformer parses the transformer function and its arguments
 func (p *Parser) parseTransformer() (string, []string, error) {
 	// Expect the transformer name (an identifier)
 	transformer := p.nextToken()
 	if transformer.Type != lexer.IDENTIFIER {
 		return "", nil, p.errorWithContext(transformer, "expected transformer name")
+	}
+
+	fmt.Println("transformer.Literal", transformer.Literal)
+	// Check if the transformer name has only alphabets
+	if err := p.isTransformer(transformer); err != nil {
+		return "", nil, p.errorWithContext(transformer, "expected transformer name to have only alphabets")
 	}
 
 	// Expect '(' to start argument list
@@ -218,13 +234,32 @@ func (p *Parser) expectSymbol(expectedType lexer.TokenType) error {
 }
 
 // errorWithContext provides an error message with context and highlights where the error occurred
+// errorWithContext provides an error message with context and highlights where the error occurred
 func (p *Parser) errorWithContext(tok lexer.Token, message string) error {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("%s at position %d: %s", message, tok.Pos, tok.Literal)) // Include position in error
+
+	// Split the input into lines to locate the exact line and position
+	lines := strings.Split(p.input, "\n")
+	if tok.Line > len(lines) {
+		return fmt.Errorf("invalid line number %d", tok.Line)
+	}
+
+	// Get the error line using the line number
+	// verify if lines has this index
+	errorLine := lines[tok.Line-1] // Line numbers are 1-based
+
+	// Error message with line and position
+	builder.WriteString(fmt.Sprintf("%s at line %d, position %d\n", message, tok.Line, tok.Pos))
+	builder.WriteString(errorLine)
 	builder.WriteString("\n")
-	builder.WriteString(p.input)
-	builder.WriteString("\n")
-	builder.WriteString(p.makePointer(tok.Pos))
+
+	// Create a pointer string (e.g., "   ^") to show where the error occurred in the line
+	pointer := make([]rune, tok.Pos)
+	for i := range pointer {
+		pointer[i] = ' ' // Create spaces to position the '^' character
+	}
+	builder.WriteString(string(pointer) + "^") // Add the '^' character to point to the error
+
 	return fmt.Errorf(builder.String())
 }
 

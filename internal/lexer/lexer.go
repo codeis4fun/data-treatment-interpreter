@@ -28,17 +28,20 @@ const (
 type Token struct {
 	Type    TokenType
 	Literal string
+	Line    int // Line number where the token was found
 	Pos     int // Position in the input string
 }
 
 // Lexer represents the state of the lexer
 type Lexer struct {
-	sc     *bufio.Scanner
-	input  string
-	start  int
-	pos    int
-	width  int
-	tokens chan Token
+	sc      *bufio.Scanner
+	input   string
+	start   int
+	pos     int
+	width   int
+	line    int
+	linePos int
+	tokens  chan Token
 }
 
 type stateFn func(*Lexer) stateFn
@@ -59,6 +62,7 @@ var symbols = map[rune]TokenType{
 func NewLexer(r io.Reader) *Lexer {
 	l := &Lexer{
 		sc:     bufio.NewScanner(r),
+		line:   1, // Start on the first line
 		tokens: make(chan Token),
 	}
 	go l.run() // Start the lexer in a goroutine
@@ -76,6 +80,7 @@ func (l *Lexer) emit(t TokenType) {
 		Type:    t,
 		Literal: l.input[l.start:l.pos],
 		Pos:     l.start, // Save the position of the token
+		Line:    l.line,  // Track the line number
 	}
 	l.start = l.pos
 }
@@ -112,12 +117,14 @@ func (l *Lexer) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = w
 	l.pos += l.width
+	l.linePos += l.width
 	return r
 }
 
 // backup steps back one rune
 func (l *Lexer) backup() {
 	l.pos -= l.width
+	l.linePos -= l.width
 }
 
 // lexString scans string literals (enclosed in single quotes)
@@ -142,8 +149,10 @@ func lexText(l *Lexer) stateFn {
 
 		switch {
 		case r == '\n':
-			l.emit(EOL) // Emit EOL token for line breaks
-			return nil  // Stop lexing the current line and wait for the next line
+			l.emit(EOL)   // Emit EOL token for line breaks
+			l.line++      // Increment the line number
+			l.linePos = 0 // Reset the position within the new line
+			return nil    // Stop lexing the current line and wait for the next line
 		case r == '\'':
 			return lexString // Handle string literals
 		case unicode.IsSpace(r):
