@@ -51,20 +51,6 @@ func (t *Concatenate) Transform() (Results, error) {
 		values = append(values, value.String())
 	}
 
-	// for _, arg := range t.Args {
-	// 	if strings.HasPrefix(arg, "'") && strings.HasSuffix(arg, "'") {
-	// 		// It's a string literal, strip the quotes and add to parts
-	// 		values = append(values, strings.Trim(arg, "'"))
-	// 	} else {
-	// 		// It's a field reference, get the value from JSON
-	// 		value := gjson.GetBytes(t.Config.Json, arg)
-	// 		if !value.Exists() {
-	// 			return nil, fmt.Errorf("field %s not found in JSON", arg)
-	// 		}
-	// 		values = append(values, value.String())
-	// 	}
-	// }
-
 	// Concatenate the values
 	return Results{strings.Join(values, separator)}, nil
 }
