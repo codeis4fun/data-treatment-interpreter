@@ -48,7 +48,7 @@ func (e *Engine) executeSet(program *parser.Program, jsonData []byte) ([]byte, e
 	// Create the appropriate transformer based on the program
 	transformerFunc, ok := e.transformers[program.Transformer]
 	if !ok {
-		return nil, fmt.Errorf("transformer '%s' not found", program.Transformer)
+		return jsonData, fmt.Errorf("transformer '%s' not found", program.Transformer)
 	}
 	transformer := transformerFunc(transformers.Config{Args: program.Args, Json: jsonData})
 
@@ -97,7 +97,7 @@ func (e *Engine) executeIteration(program *parser.Program, jsonData []byte) ([]b
 		// Apply the transformation to the current element
 		transformerFunc, ok := e.transformers[program.Transformer]
 		if !ok {
-			return nil, fmt.Errorf("transformer '%s' not found", program.Transformer)
+			return jsonData, fmt.Errorf("transformer '%s' not found", program.Transformer)
 		}
 		transformer := transformerFunc(transformers.Config{
 			Args: []string{variable}, // Pass the current field to the transformer

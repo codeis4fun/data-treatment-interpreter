@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -286,6 +287,128 @@ SET completeName = uppercase(completeName)`
 	}
 
 	expected := `{"name": "john", "surname": "doe","completeName":"JOHN DOE"}`
+	if string(modifiedJSON) != expected {
+		t.Errorf("Expected %s, got %s", expected, string(modifiedJSON))
+	}
+}
+
+func TestEngineWithSyntaxError(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"name": "john", "surname": "doe"}`)
+
+	input := `SET completeName = concatenate(' ',name, surname`
+
+	// Initialize lexer and parser
+	l := lexer.NewLexer(strings.NewReader(input))
+	p := parser.NewParser(l, input)
+
+	// Parse the input
+	programs, err := p.RunAll()
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+
+	e := engine.NewEngine()
+	transformedJson, err := e.ExecuteAll(programs, jsonData)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	expected := []byte(`{"name": "john", "surname": "doe"}`)
+
+	// compare two jsons
+	if string(transformedJson) != string(expected) {
+		t.Errorf("Expected %s, got %s", expected, transformedJson)
+	}
+
+}
+
+func TestEngineWithInexistentTransformer(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"name": "john", "surname": "doe"}`)
+
+	// Input transformation: SET completeName = nonExistent(name, surname)
+	program := &parser.Program{
+		Variables:   []string{"completeName"},
+		Transformer: "nonExistent",
+		Args:        []string{"name", "surname"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	_, err := e.Execute(program, jsonData)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestEngineWithTransformerReturningMoreOutputsThanOutputVariables(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"height": 1.72, "weight": 60}`)
+
+	// Input transformation: SET completeName = concatenate(name, surname)
+	program := &parser.Program{
+		Variables:   []string{"bmi"},
+		Transformer: "bmi",
+		Args:        []string{"weight", "height"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	_, err := e.Execute(program, jsonData)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestEngineWithFieldThatIsNotArray(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"friendName": "john"}`)
+
+	// Input transformation: SET friends.#.first = uppercase(friends.first)
+	program := &parser.Program{
+		Variables:   []string{"friendName.#"},
+		Transformer: "uppercase",
+		Args:        []string{"friends.#"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	_, err := e.Execute(program, jsonData)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestEngineWithIterationsButInexistentTransformer(t *testing.T) {
+	// Sample JSON data
+	jsonData := []byte(`{"friends":[{"first":"Dale","last":"Murphy"},{"first":"Roger","last":"Craig"},{"first":"Jane","last":"Murphy"}]}`)
+
+	// Input transformation: SET friends.#.first = uppercase(friends.#.first)
+	program := &parser.Program{
+		Variables:   []string{"friends.#.first"},
+		Transformer: "nonExistent",
+		Args:        []string{"friends.#.first"},
+	}
+
+	// Initialize engine
+	e := engine.NewEngine()
+
+	// Apply transformations to JSON
+	modifiedJSON, err := e.Execute(program, jsonData)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+
+	fmt.Println(string(modifiedJSON))
+
+	expected := `{"friends":[{"first":"Dale","last":"Murphy"},{"first":"Roger","last":"Craig"},{"first":"Jane","last":"Murphy"}]}`
 	if string(modifiedJSON) != expected {
 		t.Errorf("Expected %s, got %s", expected, string(modifiedJSON))
 	}
