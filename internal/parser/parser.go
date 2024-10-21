@@ -169,8 +169,8 @@ parseLoop:
 // check if transformer name has only alphabets
 func (p *Parser) isTransformer(token lexer.Token) error {
 	for _, r := range token.Literal {
-		if r < 'a' || r > 'z' {
-			return p.errorWithContext(token, "expected transformer name")
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return p.errorWithContext(token, "transformer name should have only alphabets")
 		}
 	}
 	return nil
@@ -184,7 +184,6 @@ func (p *Parser) parseTransformer() (string, []string, error) {
 		return "", nil, p.errorWithContext(transformer, "expected transformer name")
 	}
 
-	fmt.Println("transformer.Literal", transformer.Literal)
 	// Check if the transformer name has only alphabets
 	if err := p.isTransformer(transformer); err != nil {
 		return "", nil, p.errorWithContext(transformer, "expected transformer name to have only alphabets")

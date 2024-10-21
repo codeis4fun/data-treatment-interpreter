@@ -54,6 +54,17 @@ func TestParserWithSyntaxError(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error, got nil")
 	}
+
+	var expectedError strings.Builder
+	expectedError.WriteString("unexpected token in arguments at line 1, position 36")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("SET a, b = concatenate(name, surname")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("                                    ^")
+
+	if err.Error() != expectedError.String() {
+		t.Errorf("Expected error to be %q, got %q", expectedError.String(), err.Error())
+	}
 }
 
 func TestParserWithIterations(t *testing.T) {
@@ -124,4 +135,96 @@ SET d = t(e, f)`
 		t.Errorf("Expected program to be %v, got %v", expectedProgram2, program2)
 	}
 
+}
+
+func TestParserWithoutSetKeyword(t *testing.T) {
+	input := "a = t(b, c)"
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+	p := parser.NewParser(l, input)
+
+	_, err := p.Run()
+	if err == nil {
+		t.Errorf("Expected error, but got nil")
+	}
+
+	var expectedError strings.Builder
+	expectedError.WriteString("expected 'SET' keyword at line 1, position 0")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("a = t(b, c)")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("^")
+
+	if err.Error() != expectedError.String() {
+		t.Errorf("Expected error to be %q, got %q", expectedError.String(), err.Error())
+	}
+}
+
+func TestParserWithInvalidVariableName(t *testing.T) {
+	input := "SET 1a = t(b, c)"
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+	p := parser.NewParser(l, input)
+
+	_, err := p.Run()
+	if err == nil {
+		t.Errorf("Expected error, but got nil")
+	}
+
+	var expectedError strings.Builder
+	expectedError.WriteString("expected variable name at line 1, position 4")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("SET 1a = t(b, c)")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("    ^")
+
+	if err.Error() != expectedError.String() {
+		t.Errorf("Expected error to be %q, got %q", expectedError.String(), err.Error())
+	}
+}
+
+func TestParserWithMissingOperator(t *testing.T) {
+	input := "SET a t(b, c)"
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+	p := parser.NewParser(l, input)
+
+	_, err := p.Run()
+	if err == nil {
+		t.Errorf("Expected error, but got nil")
+	}
+
+	var expectedError strings.Builder
+	expectedError.WriteString("unexpected token in variables at line 1, position 6")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("SET a t(b, c)")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("      ^")
+
+	if err.Error() != expectedError.String() {
+		t.Errorf("Expected error to be %q, got %q", expectedError.String(), err.Error())
+	}
+}
+
+func TestParserWithInvalidTransformerName(t *testing.T) {
+	input := "SET a = 1(b, c)"
+	r := strings.NewReader(input)
+	l := lexer.NewLexer(r)
+	p := parser.NewParser(l, input)
+
+	_, err := p.Run()
+	if err == nil {
+		t.Errorf("Expected error, but got nil")
+	}
+
+	var expectedError strings.Builder
+	expectedError.WriteString("expected transformer name at line 1, position 8")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("SET a = 1(b, c)")
+	expectedError.WriteString("\n")
+	expectedError.WriteString("        ^")
+
+	if err.Error() != expectedError.String() {
+		t.Errorf("Expected error to be %q, got %q", expectedError.String(), err.Error())
+	}
 }
