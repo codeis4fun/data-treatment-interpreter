@@ -34,14 +34,13 @@ type Token struct {
 
 // Lexer represents the state of the lexer
 type Lexer struct {
-	sc      *bufio.Scanner
-	input   string
-	start   int
-	pos     int
-	width   int
-	line    int
-	linePos int
-	tokens  chan Token
+	sc     *bufio.Scanner
+	input  string
+	start  int
+	pos    int
+	width  int
+	line   int
+	tokens chan Token
 }
 
 type stateFn func(*Lexer) stateFn
@@ -117,14 +116,12 @@ func (l *Lexer) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = w
 	l.pos += l.width
-	l.linePos += l.width
 	return r
 }
 
 // backup steps back one rune
 func (l *Lexer) backup() {
 	l.pos -= l.width
-	l.linePos -= l.width
 }
 
 // lexString scans string literals (enclosed in single quotes)
@@ -149,10 +146,9 @@ func lexText(l *Lexer) stateFn {
 
 		switch {
 		case r == '\n':
-			l.emit(EOL)   // Emit EOL token for line breaks
-			l.line++      // Increment the line number
-			l.linePos = 0 // Reset the position within the new line
-			return nil    // Stop lexing the current line and wait for the next line
+			l.emit(EOL) // Emit EOL token for line breaks
+			l.line++    // Increment the line number
+			return nil  // Stop lexing the current line and wait for the next line
 		case r == '\'':
 			return lexString // Handle string literals
 		case unicode.IsSpace(r):
